@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduTrack - Smart Education Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f7fa;
+        }
+        .air-canvas {
+            border: 2px dashed #3498db;
+            background-color: white;
+            touch-action: none;
+        }
+        .turquoise-bg {
+            background-color: #4ABFD6;
+        }
+        .turquoise-text {
+            color: #4ABFD6;
+        }
+        .header-shadow {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .webcam-container {
+            position: relative;
+        }
+        .face-box {
+            position: absolute;
+            border: 2px solid #4ABFD6;
+            border-radius: 4px;
+        }
+        .login-bg {
+            background-image: linear-gradient(to right, rgba(74, 191, 214, 0.8), rgba(52, 152, 219, 0.8)), url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');
+            background-size: cover;
+            background-position: center;
+        }
+        .finger-pointer {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: rgba(255, 0, 0, 0.7);
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .gesture-guide {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 50;
+            max-width: 250px;
+            font-size: 0.8rem;
+        }
+        .hand-detection-feedback {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+        .chatbot-messages {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .typing-indicator span {
+            animation: blink 1.4s infinite both;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes blink {
+            0% { opacity: 0.1; }
+            20% { opacity: 1; }
+            100% { opacity: 0.1; }
+        }
+        .mic-active {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); color: red; }
+            50% { transform: scale(1.1); color: #FE3B3B; }
+            100% { transform: scale(1); color: red; }
+        }
+        @media (max-width: 640px) {
+            .canvas-container {
+                height: 300px !important;
+            }
+            .webcam-motion-tracking {
+                width: 80px !important;
+                height: 80px !important;
+            }
+            .gesture-popup {
+                max-width: 200px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center login-bg">
+        <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold turquoise-text">EduTrack</h1>
+                <p class="text-gray-600 mt-2">Smart Education Platform</p>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-gray-700 mb-2">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" required>
+                </div>
+                <div>
+                    <label for="password" class="block text-gray-700 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" required>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="rememberMe" class="mr-2">
+                    <label for="rememberMe" class="text-gray-700">Remember me</label>
+                </div>
+                <button type="submit" class="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200 turquoise-bg">Login</button>
+                <div class="text-center mt-4">
+                    <button type="button" id="adminLoginBtn" class="text-blue-500 hover:underline">Login as Admin</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="hidden min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white header-shadow">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold turquoise-text">EduTrack</h1>
+                    <div id="currentTime" class="ml-8 text-gray-600"></div>
+                </div>
+                <div class="flex items-center">
+                    <div class="mr-4" id="userInfo">
+                        <span class="font-medium" id="loggedInUser">User Name</span>
+                    </div>
+                    <button id="logoutBtn" class="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600">
+                        <i class="bi bi-box-arrow-right mr-1"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-6">
+            <!-- Tabs -->
+            <div class="bg-white rounded-lg shadow-md mb-6">
+                <div class="flex flex-wrap border-b">
+                    <button class="tab-btn py-3 px-6 focus:outline-none transition-all duration-200 font-medium border-b-2 border-blue-500 text-blue-600 flex-grow" data-tab="attendance">
+                        <i class="bi bi-camera-video mr-2"></i> Attendance
+                    </button>
+                    <button class="tab-btn py-3 px-6 focus:outline-none transition-all duration-200 font-medium text-gray-600 hover:text-blue-500 flex-grow" data-tab="airCanvas">
+                        <i class="bi bi-brush mr-2"></i> Air Canvas
+                    </button>
+                    <button class="tab-btn py-3 px-6 focus:outline-none transition-all duration-200 font-medium text-gray-600 hover:text-blue-500 flex-grow" data-tab="chatbot">
+                        <i class="bi bi-chat-dots mr-2"></i> EduBot
+                    </button>
+                    <button class="tab-btn py-3 px-6 focus:outline-none transition-all duration-200 font-medium text-gray-600 hover:text-blue-500 flex-grow admin-only hidden" data-tab="adminPanel">
+                        <i class="bi bi-gear mr-2"></i> Admin Panel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Attendance Tab -->
+            <div id="attendanceTab" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <h2 class="text-xl font-semibold mb-4">Face Recognition Attendance</h2>
+                        <div class="webcam-container relative mb-4 bg-gray-100 rounded-lg overflow-hidden" style="height: 320px;">
+                            <div class="flex items-center justify-center h-full" id="webcamPlaceholder">
+                                <div class="text-center">
+                                    <i class="bi bi-camera text-5xl text-gray-400"></i>
+                                    <p class="mt-2 text-gray-500">Camera feed will appear here</p>
+                                </div>
+                            </div>
+                            <video id="webcam" class="w-full h-full object-cover hidden"></video>
+                            <div id="faceDetectionStatus" class="hand-detection-feedback hidden">Scanning for faces...</div>
+                        </div>
+                        <div class="flex flex-wrap justify-between gap-2">
+                            <button id="startCamera" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                                <i class="bi bi-play-fill mr-1"></i> Start Camera
+                            </button>
+                            <button id="captureAttendance" class="px-4 py-2 turquoise-bg text-white rounded-lg hover:bg-blue-600" disabled>
+                                <i class="bi bi-check-circle mr-1"></i> Mark Attendance
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <h2 class="text-xl font-semibold mb-4">Today's Attendance</h2>
+                        <div class="overflow-auto max-h-80">
+                            <table class="min-w-full bg-white">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="py-2 px-4 text-left">Name</th>
+                                        <th class="py-2 px-4 text-left">Time</th>
+                                        <th class="py-2 px-4 text-left">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendanceList">
+                                    <tr class="border-b">
+                                        <td class="py-2 px-4">No attendance records</td>
+                                        <td class="py-2 px-4">-</td>
+                                        <td class="py-2 px-4">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Air Canvas Tab -->
+            <div id="airCanvasTab" class="tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold">Air Canvas</h2>
+                            <div class="flex space-x-2">
+                                <button class="tool-btn px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 bg-gray-200" data-tool="pen" title="Pen Tool">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="tool-btn px-3 py-1 rounded border border-gray-300 hover:bg-gray-100" data-tool="eraser" title="Eraser">
+                                    <i class="bi bi-eraser"></i>
+                                </button>
+                                <button id="clearCanvas" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100" title="Clear Canvas">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="color-picker flex space-x-2 mb-4">
+                            <button class="w-6 h-6 rounded-full bg-black" data-color="black" style="box-shadow: 0 0 0 2px white, 0 0 0 4px black"></button>
+                            <button class="w-6 h-6 rounded-full bg-blue-500" data-color="blue"></button>
+                            <button class="w-6 h-6 rounded-full bg-red-500" data-color="red"></button>
+                            <button class="w-6 h-6 rounded-full bg-green-500" data-color="green"></button>
+                            <button class="w-6 h-6 rounded-full bg-yellow-500" data-color="yellow"></button>
+                            <button class="w-6 h-6 rounded-full bg-purple-500" data-color="purple"></button>
+                        </div>
+                        <div class="canvas-container bg-gray-50 rounded-lg p-2 relative" style="height: 400px;">
+                            <canvas id="airCanvas" class="air-canvas w-full h-full"></canvas>
+                            <div class="webcam-motion-tracking absolute top-0 right-0 w-32 h-32 m-2 bg-gray-200 rounded overflow-hidden">
+                                <video id="motionWebcam" class="w-full h-full object-cover" style="transform: scaleX(-1)"></video>
+                                <div id="handDetectionStatus" class="hand-detection-feedback hidden">Tracking...</div>
+                            </div>
+                            <div id="fingerPointer" class="finger-pointer hidden"></div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap justify-between gap-2">
+                            <button id="startMotionTracking" class="px-4 py-2 turquoise-bg text-white rounded-lg hover:bg-blue-600">
+                                <i class="bi bi-hand-index"></i> Start Motion Tracking
+                            </button>
+                            <button id="saveCanvas" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                                <i class="bi bi-save"></i> Save Work
+                            </button>
+                        </div>
+                        <div id="gestureGuide" class="hidden mt-3 bg-gray-100 p-2 rounded-lg text-sm">
+                            <h3 class="font-medium mb-1">Gesture Guide:</h3>
+                            <ul class="list-disc pl-5">
+                                <li>One finger raised: Draw</li>
+                                <li>Two fingers with thumb: Stop drawing</li>
+                                <li>All five fingers raised: Pause writing</li>
+                                <li>Close and open all fingers quickly: Take screenshot</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <h2 class="text-xl font-semibold mb-4">Math Problem Solver</h2>
+                        <div class="mb-4">
+                            <label for="mathInput" class="block text-gray-700 mb-2">Input Mathematical Expression</label>
+                            <textarea id="mathInput" rows="4" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Enter a mathematical expression (e.g., 2x + 5 = 10)"></textarea>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button id="solveMath" class="px-4 py-2 turquoise-bg text-white rounded-lg hover:bg-blue-600">
+                                <i class="bi bi-calculator mr-1"></i> Solve
+                            </button>
+                            <button id="canvasToInput" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
+                                <i class="bi bi-arrow-down-circle mr-1"></i> Use Canvas Input
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Solution</label>
+                            <div id="mathOutput" class="w-full px-3 py-4 min-h-32 bg-gray-50 border rounded-lg overflow-auto">
+                                <p class="text-gray-500">Solution will appear here</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chatbot Tab -->
+            <div id="chatbotTab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">EduBot - AI Learning Assistant</h2>
+                    <div class="chatbot-messages bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="space-y-4" id="chatMessages">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center text-white mr-3">
+                                    <i class="bi bi-robot"></i>
+                                </div>
+                                <div class="bg-blue-100 p-3 rounded-lg max-w-3xl">
+                                    <p>Hello! I'm EduBot, your AI learning assistant. How can I help you today with your educational queries?</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="typingIndicator" class="typing-indicator flex items-start mt-4 hidden">
+                            <div class="flex-shrink-0 bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center text-white mr-3">
+                                <i class="bi bi-robot"></i>
+                            </div>
+                            <div class="bg-blue-100 p-3 rounded-lg">
+                                <p>Thinking<span>.</span><span>.</span><span>.</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <textarea id="chatInput" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" rows="2" placeholder="Type your question here..."></textarea>
+                        <button id="voiceInputBtn" class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 h-full">
+                            <i class="bi bi-mic-fill"></i>
+                        </button>
+                        <button id="sendMessageBtn" class="px-4 py-2 turquoise-bg text-white rounded-lg hover:bg-blue-600 h-full">
+                            <i class="bi bi-send-fill"></i> Send
+                        </button>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-500">
+                        <p>
+                            <i class="bi bi-info-circle"></i> 
+                            You can ask me about any educational topic or click the mic icon to use voice commands.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Panel Tab -->
+            <div id="adminPanelTab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">Admin Dashboard</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-blue-100 p-4 rounded-lg">
+                            <h3 class="font-medium text-blue-800">Total Users</h3>
+                            <p class="text-3xl font-bold text-blue-800">24</p>
+                        </div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <h3 class="font-medium text-green-800">Present Today</h3>
+                            <p class="text-3xl font-bold text-green-800">18</p>
+                        </div>
+                        <div class="bg-red-100 p-4 rounded-lg">
+                            <h3 class="font-medium text-red-800">Absent Today</h3>
+                            <p class="text-3xl font-bold text-red-800">6</p>
+                        </div>
+                    </div>
+                    
+                    <!-- User Management -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold mb-3">User Management</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="py-2 px-4 text-left">ID</th>
+                                        <th class="py-2 px-4 text-left">Name</th>
+                                        <th class="py-2 px-4 text-left">Role</th>
+                                        <th class="py-2 px-4 text-left">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersList">
+                                    <tr class="border-b">
+                                        <td class="py-2 px-4">001</td>
+                                        <td class="py-2 px-4">John Doe</td>
+                                        <td class="py-2 px-4">Student</td>
+                                        <td class="py-2 px-4">
+                                            <button class="text-blue-500 hover:underline mr-2">Edit</button>
+                                            <button class="text-red-500 hover:underline">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="py-2 px-4">002</td>
+                                        <td class="py-2 px-4">Jane Smith</td>
+                                        <td class="py-2 px-4">Teacher</td>
+                                        <td class="py-2 px-4">
+                                            <button class="text-blue-500 hover:underline mr-2">Edit</button>
+                                            <button class="text-red-500 hover:underline">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="py-2 px-4">003</td>
+                                        <td class="py-2 px-4">Mike Johnson</td>
+                                        <td class="py-2 px-4">Student</td>
+                                        <td class="py-2 px-4">
+                                            <button class="text-blue-500 hover:underline mr-2">Edit</button>
+                                            <button class="text-red-500 hover:underline">Delete</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button id="addUser" class="mt-4 px-4 py-2 turquoise-bg text-white rounded-lg hover:bg-blue-600">
+                            <i class="bi bi-plus"></i> Add User
+                        </button>
+                    </div>
+                    
+                    <!-- Attendance Reports -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">Attendance Reports</h3>
+                        <div class="flex flex-wrap mb-4 space-x-0 md:space-x-4">
+                            <div class="w-full md:w-1/2 mb-2 md:mb-0">
+                                <label for="reportStartDate" class="block text-gray-700 mb-1">Start Date</label>
+                                <input type="date" id="reportStartDate" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            </div>
+                            <div class="w-full md:w-1/2">
+                                <label for="reportEndDate" class="block text-gray-700 mb-1">End Date</label>
+                                <input type="date" id="reportEndDate" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap space-x-0 space-y-2 md:space-x-4 md:space-y-0">
+                            <button id="generateReport" class="w-full md:w-auto px-4 py-2 turquoise-bg text-white rounded-lg hover:bg-blue-600">
+                                <i class="bi bi-bar-chart"></i> Generate Report
+                            </button>
+                            <button id="exportExcel" class="w-full md:w-auto px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                                <i class="bi bi-file-earmark-excel"></i> Export to Excel
+                            </button>
+                            <button id="exportPDF" class="w-full md:w-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                                <i class="bi bi-file-earmark-pdf"></i> Export to PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="bg-white py-4 border-t">
+            <div class="container mx-auto px-4">
+                <p class="text-center text-gray-600">© 2023 EduTrack - Smart Education Platform. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Add New User</h3>
+                <button class="text-gray-600 hover:text-gray-800" id="closeAddUserModal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="addUserForm" class="space-y-4">
+                <div>
+                    <label for="newUserName" class="block text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="newUserName" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <div>
+                    <label for="newUserRole" class="block text-gray-700 mb-1">Role</label>
+                    <select id="newUserRole" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="newUserEmail" class="block text-gray-700 mb-1">Email</label>
+                    <input type="email" id="newUserEmail" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <div>
+                    <label for="newUserPassword" class="block text-gray-700 mb-1">Password</label>
+                    <input type="password" id="newUserPassword" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-2 px-4 turquoise-bg text-white rounded-lg hover:bg-blue-600 transition duration-200">Add User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Gesture Guide Popup -->
+    <div class="gesture-guide hidden" id="gesturePopup">
+        <h4 class="font-bold mb-1">Air Canvas Gestures</h4>
+        <ul class="text-xs">
+            <li>• One finger to draw</li>
+            <li>• Two fingers (with thumb) to stop drawing</li>
+            <li>• Five fingers raised to pause writing</li>
+            <li>• Close and open all fingers quickly to screenshot</li>
+        </ul>
+    </div>
+
+    <!-- Permission Request Modal -->
+    <div id="permissionModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div class="text-center mb-4">
+                <i class="bi bi-hand-index-thumb text-5xl text-blue-500"></i>
+                <h3 class="text-xl font-semibold mt-2">Permission to Write</h3>
+                <p class="text-gray-600 mt-2">You raised all five fingers. Do you want to continue writing?</p>
+            </div>
+            <div class="flex justify-center space-x-4">
+                <button id="permitWriting" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                    Yes, Continue
+                </button>
+                <button id="declineWriting" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                    No, Stop
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voice Recognition Alert -->
+    <div id="voiceRecognitionAlert" class="fixed bottom-4 left-4 bg-blue-500 text-white p-4 rounded-lg shadow-lg hidden z-50">
+        <div class="flex items-center">
+            <i class="bi bi-mic-fill mr-3 text-xl" id="voiceIcon"></i>
+            <div>
+                <h4 class="font-medium">Voice Recognition Active</h4>
+                <p id="voiceRecognitionStatus" class="text-sm">Listening...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const loginScreen = document.getElementById('loginScreen');
+            const mainApp = document.getElementById('mainApp');
+            const loginForm = document.getElementById('loginForm');
+            const adminLoginBtn = document.getElementById('adminLoginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const currentTime = document.getElementById('currentTime');
+            const loggedInUser = document.getElementById('loggedInUser');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const adminOnlyElements = document.querySelectorAll('.admin-only');
+            
+            // Face Recognition Attendance
+            const startCamera = document.getElementById('startCamera');
+            const captureAttendance = document.getElementById('captureAttendance');
+            const webcam = document.getElementById('webcam');
+            const webcamPlaceholder = document.getElementById('webcamPlaceholder');
+            const attendanceList = document.getElementById('attendanceList');
+            const faceDetectionStatus = document.getElementById('faceDetectionStatus');
+            
+            // Air Canvas
+            const airCanvas = document.getElementById('airCanvas');
+            const ctx = airCanvas.getContext('2d');
+            const clearCanvas = document.getElementById('clearCanvas');
+            const toolButtons = document.querySelectorAll('.tool-btn');
+            const colorButtons = document.querySelectorAll('.color-picker button');
+            const startMotionTracking = document.getElementById('startMotionTracking');
+            const motionWebcam = document.getElementById('motionWebcam');
+            const saveCanvas = document.getElementById('saveCanvas');
+            const fingerPointer = document.getElementById('fingerPointer');
+            const gestureGuide = document.getElementById('gestureGuide');
+            const gesturePopup = document.getElementById('gesturePopup');
+            const handDetectionStatus = document.getElementById('handDetectionStatus');
+            
+            // Math Problem Solver
+            const mathInput = document.getElementById('mathInput');
+            const solveMath = document.getElementById('solveMath');
+            const mathOutput = document.getElementById('mathOutput');
+            const canvasToInput = document.getElementById('canvasToInput');
+            
+            // Chatbot
+            const chatMessages = document.getElementById('chatMessages');
+            const chatInput = document.getElementById('chatInput');
+            const sendMessageBtn = document.getElementById('sendMessageBtn');
+            const voiceInputBtn = document.getElementById('voiceInputBtn');
+            const typingIndicator = document.getElementById('typingIndicator');
+            const voiceRecognitionAlert = document.getElementById('voiceRecognitionAlert');
+            const voiceIcon = document.getElementById('voiceIcon');
+            const voiceRecognitionStatus = document.getElementById('voiceRecognitionStatus');
+            
+            // Admin Panel
+            const addUser = document.getElementById('addUser');
+            const addUserModal = document.getElementById('addUserModal');
+            const closeAddUserModal = document.getElementById('closeAddUserModal');
+            const addUserForm = document.getElementById('addUserForm');
+            const generateReport = document.getElementById('generateReport');
+            const exportExcel = document.getElementById('exportExcel');
+            const exportPDF = document.getElementById('exportPDF');
+            
+            // Permission Modal
+            const permissionModal = document.getElementById('permissionModal');
+            const permitWriting = document.getElementById('permitWriting');
+            const declineWriting = document.getElementById('declineWriting');
+            
+            // Variables
+            let isAdmin = false;
+            let currentTool = 'pen';
+            let currentColor = 'black';
+            let isDrawing = false;
+            let cameraStream = null;
+            let motionStream = null;
+            let isMotionTracking = false;
+            let writePermissionGranted = true;
+            
+            // Hand tracking variables
+            let fingerCount = 0;
+            let isThumbPresent = false;
+            let lastGestureTime = 0;
+            let lastFingerPositions = [];
+            let gestureDetectionInterval = null;
+
+            // Voice recognition variables
+            let recognition = null;
+            let isListening = false;
+            
+            // Initialize speech recognition if available
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = function() {
+                    isListening = true;
+                    voiceRecognitionAlert.classList.remove('hidden');
+                    voiceIcon.classList.add('mic-active');
+                    voiceRecognitionStatus.textContent = "Listening...";
+                };
+                
+                recognition.onresult = function(event) {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    
+                    if (interimTranscript) {
+                        voiceRecognitionStatus.textContent = "I heard: " + interimTranscript;
+                    }
+                    
+                    if (finalTranscript) {
+                        chatInput.value = finalTranscript;
+                        voiceRecognitionStatus.textContent = "Processing: " + finalTranscript;
+                        setTimeout(() => {
+                            recognition.stop();
+                        }, 1000);
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    voiceRecognitionStatus.textContent = "Error: " + event.error;
+                    setTimeout(() => {
+                        voiceRecognitionAlert.classList.add('hidden');
+                        isListening = false;
+                        voiceIcon.classList.remove('mic-active');
+                    }, 2000);
+                };
+                
+                recognition.onend = function() {
+                    isListening = false;
+                    voiceIcon.classList.remove('mic-active');
+                    setTimeout(() => {
+                        if (!isListening) {
+                            voiceRecognitionAlert.classList.add('hidden');
+                        }
+                    }, 1500);
+                };
+            }
+            
+            // Update current time
+            function updateTime() {
+                const now = new Date();
+                currentTime.textContent = now.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit' 
+                });
+            }
+            setInterval(updateTime, 1000);
+            updateTime();
+            
+            // Login functionality
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                // Simple validation
+                if (username && password) {
+                    loginScreen.classList.add('hidden');
+                    mainApp.classList.remove('hidden');
+                    loggedInUser.textContent = username;
+                    isAdmin = false;
+                    updateAdminUI();
+                }
+            });
+            
+            adminLoginBtn.addEventListener('click', function() {
+                loginScreen.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                loggedInUser.textContent = 'Admin User';
+                isAdmin = true;
+                updateAdminUI();
+            });
+            
+            logoutBtn.addEventListener('click', function() {
+                // Stop any active streams
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(track => track.stop());
+                }
+                if (motionStream) {
+                    motionStream.getTracks().forEach(track => track.stop());
+                }
+                if (isListening && recognition) {
+                    recognition.stop();
+                }
+                
+                mainApp.classList.add('hidden');
+                loginScreen.classList.remove('hidden');
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                captureAttendance.disabled = true;
+                webcam.classList.add('hidden');
+                webcamPlaceholder.classList.remove('hidden');
+                gesturePopup.classList.add('hidden');
+                faceDetectionStatus.classList.add('hidden');
+                writePermissionGranted = true;
+                voiceRecognitionAlert.classList.add('hidden');
+            });
+            
+            // Update UI based on user role
+            function updateAdminUI() {
+                adminOnlyElements.forEach(el => {
+                    if (isAdmin) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // Tab navigation
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.getAttribute('data-tab');
+                    
+                    // Update active button
+                    tabButtons.forEach(tab => {
+                        if (tab.getAttribute('data-tab') === tabName) {
+                            tab.classList.add('border-b-2', 'border-blue-500', 'text-blue-600');
+                            tab.classList.remove('text-gray-600', 'hover:text-blue-500');
+                        } else {
+                            tab.classList.remove('border-b-2', 'border-blue-500', 'text-blue-600');
+                            tab.classList.add('text-gray-600', 'hover:text-blue-500');
+                        }
+                    });
+                    
+                    // Show active tab content
+                    tabContents.forEach(content => {
+                        if (content.id === `${tabName}Tab`) {
+                            content.classList.remove('hidden');
+                            if (tabName === 'airCanvas') {
+                                setupCanvas(); // Resize canvas when tab becomes visible
+                            }
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+            
+            // Face Recognition Attendance
+            startCamera.addEventListener('click', async function() {
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: 'user',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    });
+                    webcam.srcObject = cameraStream;
+                    webcam.play();
+                    webcam.classList.remove('hidden');
+                    webcamPlaceholder.classList.add('hidden');
+                    captureAttendance.disabled = false;
+                    faceDetectionStatus.classList.remove('hidden');
+                    
+                    // Simulate face detection process
+                    startFaceDetection();
+                    
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    alert('Error accessing camera. Please check permissions.');
+                }
+            });
+            
+            function startFaceDetection() {
+                // Simulate the face detection process with random timing for demonstration
+                setTimeout(() => {
+                    // Create face detection box
+                    const webcamContainer = document.querySelector('.webcam-container');
+                    const faceBox = document.createElement('div');
+                    faceBox.className = 'face-box';
+                    faceBox.style.top = '100px';
+                    faceBox.style.left = '150px';
+                    faceBox.style.width = '120px';
+                    faceBox.style.height = '140px';
+                    webcamContainer.appendChild(faceBox);
+                    
+                    // Update status
+                    faceDetectionStatus.textContent = 'Face detected!';
+                    
+                    // Add name label
+                    const nameLabel = document.createElement('div');
+                    nameLabel.className = 'absolute text-xs bg-blue-500 text-white px-2 py-1 rounded';
+                    nameLabel.textContent = loggedInUser.textContent;
+                    nameLabel.style.top = '90px';
+                    nameLabel.style.left = '150px';
+                    webcamContainer.appendChild(nameLabel);
+                    
+                    // Add confidence score
+                    const confidenceLabel = document.createElement('div');
+                    confidenceLabel.className = 'absolute text-xs bg-black bg-opacity-50 text-white px-2 py-1 rounded';
+                    confidenceLabel.textContent = 'Match: 98%';
+                    confidenceLabel.style.top = '240px';
+                    confidenceLabel.style.left = '150px';
+                    webcamContainer.appendChild(confidenceLabel);
+                    
+                }, 2000);
+            }
+            
+            captureAttendance.addEventListener('click', function() {
+                // Mark attendance
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                // Clear the "no records" row if it exists
+                if (attendanceList.querySelector('td').textContent === 'No attendance records') {
+                    attendanceList.innerHTML = '';
+                }
+                
+                // Add a new attendance record
+                const newRecord = document.createElement('tr');
+                newRecord.className = 'border-b';
+                newRecord.innerHTML = `
+                    <td class="py-2 px-4">${loggedInUser.textContent}</td>
+                    <td class="py-2 px-4">${timeString}</td>
+                    <td class="py-2 px-4"><span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Present</span></td>
+                `;
+                attendanceList.appendChild(newRecord);
+                
+                alert('Attendance marked successfully!');
+            });
+            
+            // Air Canvas functionality
+            // Set up the canvas size
+            function setupCanvas() {
+                const container = airCanvas.parentElement;
+                airCanvas.width = container.clientWidth - 20; // Account for padding
+                airCanvas.height = container.clientHeight - 20;
+                
+                // Clear canvas on setup
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, airCanvas.width, airCanvas.height);
+            }
+            
+            // Initialize canvas on load and resize
+            setupCanvas();
+            window.addEventListener('resize', setupCanvas);
+            
+            // Drawing tools (both mouse and touch)
+            // For mouse events
+            airCanvas.addEventListener('mousedown', startDrawing);
+            airCanvas.addEventListener('mouseup', stopDrawing);
+            airCanvas.addEventListener('mousemove', draw);
+            airCanvas.addEventListener('mouseout', stopDrawing);
+            
+            // For touch events
+            airCanvas.addEventListener('touchstart', startDrawingTouch);
+            airCanvas.addEventListener('touchend', stopDrawing);
+            airCanvas.addEventListener('touchmove', drawTouch);
+            
+            function startDrawing(e) {
+                if (!writePermissionGranted) return;
+                isDrawing = true;
+                draw(e);
+            }
+            
+            function startDrawingTouch(e) {
+                if (!writePermissionGranted) return;
+                e.preventDefault();
+                isDrawing = true;
+                drawTouch(e);
+            }
+            
+            function draw(e) {
+                if (!isDrawing || !writePermissionGranted) return;
+                
+                ctx.lineWidth = currentTool === 'pen' ? 3 : 20;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                if (currentTool === 'pen') {
+                    ctx.strokeStyle = currentColor;
+                    ctx.globalCompositeOperation = 'source-over';
+                } else {
+                    ctx.strokeStyle = 'white';
+                    ctx.globalCompositeOperation = 'destination-out';
+                }
+                
+                const rect = airCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+            
+            function drawTouch(e) {
+                if (!isDrawing || !writePermissionGranted) return;
+                e.preventDefault();
+                
+                ctx.lineWidth = currentTool === 'pen' ? 3 : 20;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                if (currentTool === 'pen') {
+                    ctx.strokeStyle = currentColor;
+                    ctx.globalCompositeOperation = 'source-over';
+                } else {
+                    ctx.strokeStyle = 'white';
+                    ctx.globalCompositeOperation = 'destination-out';
+                }
+                
+                const rect = airCanvas.getBoundingClientRect();
+                const x = e.touches[0].clientX - rect.left;
+                const y = e.touches[0].clientY - rect.top;
+                
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+            
+            function stopDrawing() {
+                isDrawing = false;
+                ctx.beginPath();
+            }
+            
+            clearCanvas.addEventListener('click', function() {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, airCanvas.width, airCanvas.height);
+            });
+            
+            toolButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tool = this.getAttribute('data-tool');
+                    currentTool = tool;
+                    
+                    // Update tool selection UI
+                    toolButtons.forEach(btn => {
+                        btn.classList.remove('bg-gray-200');
+                    });
+                    this.classList.add('bg-gray-200');
+                });
+            });
+            
+            colorButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    currentColor = this.getAttribute('data-color');
+                    
+                    // Update color selection UI
+                    colorButtons.forEach(btn => {
+                        btn.style.boxShadow = '';
+                    });
+                    this.style.boxShadow = '0 0 0 2px white, 0 0 0 4px black';
+                });
+            });
+            
+            startMotionTracking.addEventListener('click', async function() {
+                if (!isMotionTracking) {
+                    try {
+                        motionStream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                facingMode: 'user',
+                                width: { ideal: 320 }, 
+                                height: { ideal: 240 } 
+                            } 
+                        });
+                        motionWebcam.srcObject = motionStream;
+                        motionWebcam.play();
+                        isMotionTracking = true;
+                        this.innerHTML = '<i class="bi bi-hand-index-thumb"></i> Stop Motion Tracking';
+                        this.classList.add('bg-red-500');
+                        this.classList.remove('turquoise-bg');
+                        fingerPointer.classList.remove('hidden');
+                        gestureGuide.classList.remove('hidden');
+                        gesturePopup.classList.remove('hidden');
+                        handDetectionStatus.classList.remove('hidden');
+                        
+                        // Start hand gesture detection
+                        startHandGestureDetection();
+                        
+                    } catch (error) {
+                        console.error('Error accessing camera for motion tracking:', error);
+                        alert('Error accessing camera. Please check permissions.');
+                    }
+                } else {
+                    if (motionStream) {
+                        motionStream.getTracks().forEach(track => track.stop());
+                    }
+                    isMotionTracking = false;
+                    this.innerHTML = '<i class="bi bi-hand-index"></i> Start Motion Tracking';
+                    this.classList.remove('bg-red-500');
+                    this.classList.add('turquoise-bg');
+                    fingerPointer.classList.add('hidden');
+                    gestureGuide.classList.add('hidden');
+                    gesturePopup.classList.add('hidden');
+                    handDetectionStatus.classList.add('hidden');
+                    
+                    stopHandGestureDetection();
+                    writePermissionGranted = true;
+                }
+            });
+            
+            function startHandGestureDetection() {
+                // In a real implementation, this would use a computer vision library
+                // For this example, we'll simulate finger detection with mouse and touch events
+                
+                handDetectionStatus.textContent = 'Tracking hands...';
+                
+                // For desktop
+                document.addEventListener('mousemove', simulateFingerTracking);
+                document.addEventListener('mousedown', function(e) {
+                    // Simulate one finger detection - start drawing
+                    fingerCount = 1;
+                    isThumbPresent = false;
+                    handDetectionStatus.textContent = 'Detected: 1 finger';
+                    processGesture();
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    // Simulate finger release
+                    fingerCount = 0;
+                    handDetectionStatus.textContent = 'Tracking hands...';
+                    processGesture();
+                });
+                
+                // Simulate five fingers raised with keyboard
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === '5' && isMotionTracking) {
+                        fingerCount = 5;
+                        isThumbPresent = true;
+                        handDetectionStatus.textContent = 'Detected: 5 fingers';
+                        processGesture();
+                    }
+                });
+                
+                // For touch devices
+                airCanvas.addEventListener('touchstart', function(e) {
+                    if (!writePermissionGranted) return;
+                    
+                    fingerCount = e.touches.length;
+                    // Simulate thumb detection (assuming first touch is a thumb if multiple touches)
+                    isThumbPresent = e.touches.length > 1;
+                    handDetectionStatus.textContent = `Detected: ${fingerCount} finger${fingerCount > 1 ? 's' : ''}`;
+                    processGesture();
+                });
+                
+                airCanvas.addEventListener('touchend', function(e) {
+                    fingerCount = e.touches.length;
+                    isThumbPresent = e.touches.length > 1;
+                    if (fingerCount === 0) {
+                        handDetectionStatus.textContent = 'Tracking hands...';
+                    } else {
+                        handDetectionStatus.textContent = `Detected: ${fingerCount} finger${fingerCount > 1 ? 's' : ''}`;
+                    }
+                    processGesture();
+                });
+                
+                airCanvas.addEventListener('touchmove', function(e) {
+                    if (!writePermissionGranted) return;
+                    
+                    if (e.touches.length === 1 && isDrawing) {
+                        // Use the touch position for drawing
+                        const rect = airCanvas.getBoundingClientRect();
+                        const x = e.touches[0].clientX - rect.left;
+                        const y = e.touches[0].clientY - rect.top;
+                        
+                        // Update finger pointer position
+                        fingerPointer.style.left = e.touches[0].clientX + 'px';
+                        fingerPointer.style.top = e.touches[0].clientY + 'px';
+                        
+                        // Draw on canvas
+                        ctx.lineTo(x, y);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                    }
+                });
+                
+                // Setup gesture detection interval for screenshot gesture
+                gestureDetectionInterval = setInterval(detectScreenshotGesture, 500);
+            }
+            
+            function stopHandGestureDetection() {
+                document.removeEventListener('mousemove', simulateFingerTracking);
+                
+                if (gestureDetectionInterval) {
+                    clearInterval(gestureDetectionInterval);
+                }
+            }
+            
+            function simulateFingerTracking(e) {
+                if (isMotionTracking) {
+                    // Update the position of the finger pointer
+                    fingerPointer.style.left = e.clientX + 'px';
+                    fingerPointer.style.top = e.clientY + 'px';
+                    
+                    // If we're drawing and have permission, update canvas
+                    if (isDrawing && writePermissionGranted) {
+                        const rect = airCanvas.getBoundingClientRect();
+                        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                            
+                            const x = e.clientX - rect.left;
+                            const y = e.clientY - rect.top;
+                            
+                            ctx.lineWidth = currentTool === 'pen' ? 3 : 20;
+                            ctx.lineCap = 'round';
+                            ctx.lineJoin = 'round';
+                            
+                            if (currentTool === 'pen') {
+                                ctx.strokeStyle = currentColor;
+                                ctx.globalCompositeOperation = 'source-over';
+                            } else {
+                                ctx.strokeStyle = 'white';
+                                ctx.globalCompositeOperation = 'destination-out';
+                            }
+                            
+                            ctx.lineTo(x, y);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                        }
+                    }
+                }
+            }
+            
+            function processGesture() {
+                const now = Date.now();
+                
+                // One finger - drawing mode
+                if (fingerCount === 1 && !isThumbPresent && writePermissionGranted) {
+                    isDrawing = true;
+                    ctx.beginPath(); // Start a new path when beginning to draw
+                }
+                
+                // Two fingers with thumb - stop drawing
+                if (fingerCount === 2 && isThumbPresent) {
+                    isDrawing = false;
+                    ctx.beginPath();
+                }
+                
+                // All five fingers raised - request permission to continue
+                if (fingerCount === 5) {
+                    isDrawing = false;
+                    ctx.beginPath();
+                    writePermissionGranted = false;
+                    showPermissionModal();
+                }
+                
+                lastGestureTime = now;
+                
+                // Store current finger positions for screenshot detection
+                lastFingerPositions = Array(fingerCount).fill({ x: 0, y: 0 });
+            }
+            
+            function showPermissionModal() {
+                permissionModal.classList.remove('hidden');
+            }
+            
+            permitWriting.addEventListener('click', function() {
+                writePermissionGranted = true;
+                permissionModal.classList.add('hidden');
+            });
+            
+            declineWriting.addEventListener('click', function() {
+                writePermissionGranted = false;
+                permissionModal.classList.add('hidden');
+            });
+            
+            function detectScreenshotGesture() {
+                // In a real app, this would analyze actual hand movements
+                // For this demo, we'll use keyboard shortcuts to simulate the gestures
+                
+                // Simulate the "close and open all fingers" gesture with a key press
+                document.addEventListener('keypress', function(e) {
+                    if (e.key === 's' && isMotionTracking) {
+                        takeCanvasScreenshot();
+                    }
+                });
+                
+                // Touch device simulation of the screenshot gesture
+                let touchStartCount = 0;
+                let lastTouchTime = 0;
+                
+                airCanvas.addEventListener('touchstart', function(e) {
+                    const now = Date.now();
+                    // If we detect 4+ fingers touching at once
+                    if (e.touches.length >= 4) {
+                        touchStartCount = e.touches.length;
+                        lastTouchTime = now;
+                    }
+                });
+                
+                airCanvas.addEventListener('touchend', function(e) {
+                    const now = Date.now();
+                    // If we previously had 4+ fingers and now they're all gone within a short time (quick gesture)
+                    if (touchStartCount >= 4 && e.touches.length === 0 && (now - lastTouchTime < 500)) {
+                        takeCanvasScreenshot();
+                    }
+                    touchStartCount = 0;
+                });
+            }
+            
+            function takeCanvasScreenshot() {
+                try {
+                    // Create an image from the canvas
+                    const image = airCanvas.toDataURL('image/png');
+                    
+                    // Create a temporary link
+                    const link = document.createElement('a');
+                    link.download = 'air-canvas-' + new Date().toISOString().slice(0, 10) + '.png';
+                    link.href = image;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Visual confirmation
+                    const flash = document.createElement('div');
+                    flash.style.position = 'fixed';
+                    flash.style.top = '0';
+                    flash.style.left = '0';
+                    flash.style.width = '100%';
+                    flash.style.height = '100%';
+                    flash.style.backgroundColor = 'white';
+                    flash.style.opacity = '0.5';
+                    flash.style.zIndex = '9999';
+                    flash.style.transition = 'opacity 0.5s ease-out';
+                    
+                    document.body.appendChild(flash);
+                    
+                    setTimeout(() => {
+                        flash.style.opacity = '0';
+                        setTimeout(() => {
+                            document.body.removeChild(flash);
+                        }, 500);
+                    }, 100);
+                    
+                    alert('Canvas screenshot saved successfully!');
+                } catch (error) {
+                    console.error('Error saving canvas:', error);
+                    alert('Error saving canvas screenshot');
+                }
+            }
+            
+            saveCanvas.addEventListener('click', function() {
+                takeCanvasScreenshot();
+            });
+            
+            // Transfer canvas content to math input
+            canvasToInput.addEventListener('click', function() {
+                // In a real app, this would use OCR to recognize handwritten math
+                // For this demo, we'll simulate the OCR process
+                mathInput.value = "2x + 5 = 15";
+                alert("Canvas content transferred to input field!\n\nIn a real application, this would use OCR technology to recognize your handwritten mathematics.");
+            });
+            
+            // Math Problem Solver
+            solveMath.addEventListener('click', function() {
+                const expression = mathInput.value.trim();
+                
+                if (!expression) {
+                    mathOutput.innerHTML = '<p class="text-red-500">Please enter a mathematical expression</p>';
+                    return;
+                }
+                
+                // Simulated math solving - in a real app, you'd use a math library or API
+                try {
+                    let result = 'Processing...';
+                    
+                    // Check for equation
+                    if (expression.includes('=')) {
+                        const parts = expression.split('=');
+                        if (expression.includes('x')) {
+                            // Simulate solving for x in linear equation
+                            if (expression === "2x + 5 = 15") {
+                                result = `
+                                    <div class="mb-2 font-medium">Equation: ${expression}</div>
+                                    <div class="mb-1">Step 1: Subtract 5 from both sides</div>
+                                    <div class="text-gray-600 mb-1">2x + 5 - 5 = 15 - 5</div>
+                                    <div class="text-gray-600 mb-1">2x = 10</div>
+                                    <div class="mb-1">Step 2: Divide both sides by 2</div>
+                                    <div class="text-gray-600 mb-1">2x ÷ 2 = 10 ÷ 2</div>
+                                    <div class="text-gray-600 mb-3">x = 5</div>
+                                    <div class="font-bold">Solution: x = 5</div>
+                                `;
+                            } else {
+                                result = `
+                                    <div class="mb-2 font-medium">Equation: ${expression}</div>
+                                    <div class="mb-1">Step 1: Isolate variables and constants</div>
+                                    <div class="mb-1">Step 2: Apply algebraic operations</div>
+                                    <div class="mb-3">Step 3: Solve for x</div>
+                                    <div class="font-bold">Solution: x = ${Math.floor(Math.random() * 10)}</div>
+                                `;
+                            }
+                        } else {
+                            try {
+                                result = `
+                                    <div class="mb-2 font-medium">Expression: ${expression}</div>
+                                    <div class="mb-2">This is an equality to check</div>
+                                    <div class="font-bold">Result: ${eval(parts[0]) === eval(parts[1]) ? 'True' : 'False'}</div>
+                                `;
+                            } catch (evalError) {
+                                result = `
+                                    <div class="mb-2 font-medium">Expression: ${expression}</div>
+                                    <div class="text-gray-700">The equation cannot be directly evaluated.</div>
+                                `;
+                            }
+                        }
+                    } else {
+                        // Try to evaluate the expression
+                        try {
+                            const calculated = eval(expression.replace(/x/g, '*'));
+                            result = `
+                                <div class="mb-2 font-medium">Expression: ${expression}</div>
+                                <div class="font-bold">Result: ${calculated}</div>
+                            `;
+                        } catch (evalError) {
+                            result = `
+                                <div class="mb-2 font-medium">Expression: ${expression}</div>
+                                <div class="text-gray-700">This expression is too complex for direct evaluation.</div>
+                                <div class="mt-2 font-bold">Tip: Try writing as an equation with "=" sign for better results.</div>
+                            `;
+                        }
+                    }
+                    
+                    mathOutput.innerHTML = result;
+                } catch (error) {
+                    mathOutput.innerHTML = `<p class="text-red-500">Error processing expression: ${error.message}</p>`;
+                }
+            });
+            
+            // Chatbot functionality
+            sendMessageBtn.addEventListener('click', sendChatMessage);
+            
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage();
+                }
+            });
+            
+            function sendChatMessage() {
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessageToChat('user', message);
+                
+                // Clear input
+                chatInput.value = '';
+                
+                // Show typing indicator
+                typingIndicator.classList.remove('hidden');
+                
+                // Simulate AI response
+                setTimeout(() => {
+                    typingIndicator.classList.add('hidden');
+                    
+                    // Generate response based on message
+                    let botResponse = '';
+                    
+                    if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
+                        botResponse = `Hi there! How can I help you with your learning today?`;
+                    } else if (message.toLowerCase().includes('math') || message.toLowerCase().includes('problem')) {
+                        botResponse = `I can help you solve math problems! You can type your question here or use the Air Canvas tab to draw your equations and then solve them.`;
+                    } else if (message.toLowerCase().includes('equation') || message.toLowerCase().includes('solve')) {
+                        botResponse = `To solve equations, go to the Air Canvas tab, write your equation, and click "Use Canvas Input" to transfer it to the Math Problem Solver, or directly type it in the solver input field.`;
+                    } else if (message.toLowerCase().includes('air canvas') || message.toLowerCase().includes('draw')) {
+                        botResponse = `The Air Canvas feature allows you to write or draw using hand gestures. One finger to draw, two fingers with a thumb to stop, all five fingers to pause writing, and quickly closing and opening your hand to take a screenshot.`;
+                    } else if (message.toLowerCase().includes('attendance') || message.toLowerCase().includes('face')) {
+                        botResponse = `Our facial recognition attendance system automatically identifies you and marks your attendance. Just start the camera, let it recognize you, and then click "Mark Attendance".`;
+                    } else if (message.toLowerCase().includes('who are you') || message.toLowerCase().includes('what can you do')) {
+                        botResponse = `I'm EduBot, an AI learning assistant integrated with EduTrack. I can help with educational queries, explain mathematical concepts, provide guidance on using platform features, and support your learning journey.`;
+                    } else {
+                        botResponse = `That's an interesting question about "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}". Let me provide some insights. In a real application, I'd connect to a knowledge base to give you accurate information on this topic. Is there anything specific about this subject you'd like to know?`;
+                    }
+                    
+                    // Add bot's response
+                    addMessageToChat('bot', botResponse);
+                    
+                    // Text-to-speech for bot response
+                    if ('speechSynthesis' in window) {
+                        const speech = new SpeechSynthesisUtterance(botResponse);
+                        speech.rate = 1;
+                        speech.pitch = 1;
+                        speech.volume = 1;
+                        window.speechSynthesis.speak(speech);
+                    }
+                    
+                }, 1500);
+            }
+            
+            function addMessageToChat(sender, message) {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'flex items-start ' + (sender === 'user' ? 'justify-end' : '') + ' mb-4';
+                
+                if (sender === 'user') {
+                    messageElement.innerHTML = `
+                        <div class="bg-green-100 p-3 rounded-lg max-w-3xl">
+                            <p>${message}</p>
+                        </div>
+                        <div class="flex-shrink-0 bg-green-500 rounded-full w-8 h-8 flex items-center justify-center text-white ml-3">
+                            <i class="bi bi-person"></i>
+                        </div>
+                    `;
+                } else {
+                    messageElement.innerHTML = `
+                        <div class="flex-shrink-0 bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center text-white mr-3">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg max-w-3xl">
+                            <p>${message}</p>
+                        </div>
+                    `;
+                }
+                
+                chatMessages.appendChild(messageElement);
+                
+                // Scroll to bottom of chat
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Voice input for chatbot
+            voiceInputBtn.addEventListener('click', function() {
+                if (recognition) {
+                    if (isListening) {
+                        recognition.stop();
+                    } else {
+                        recognition.start();
+                    }
+                } else {
+                    alert('Sorry, your browser does not support speech recognition. Please try using a modern browser like Chrome.');
+                }
+            });
+            
+            // Admin panel functionality
+            addUser.addEventListener('click', function() {
+                addUserModal.classList.remove('hidden');
+            });
+            
+            closeAddUserModal.addEventListener('click', function() {
+                addUserModal.classList.add('hidden');
+            });
+            
+            addUserForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('newUserName').value;
+                const role = document.getElementById('newUserRole').value;
+                
+                if (name && role) {
+                    // Add user to the table
+                    const usersList = document.getElementById('usersList');
+                    const newRow = document.createElement('tr');
+                    newRow.className = 'border-b';
+                    
+                    const userId = Math.floor(100 + Math.random() * 900); // Random 3-digit ID
+                    
+                    newRow.innerHTML = `
+                        <td class="py-2 px-4">${userId}</td>
+                        <td class="py-2 px-4">${name}</td>
+                        <td class="py-2 px-4">${role.charAt(0).toUpperCase() + role.slice(1)}</td>
+                        <td class="py-2 px-4">
+                            <button class="text-blue-500 hover:underline mr-2">Edit</button>
+                            <button class="text-red-500 hover:underline">Delete</button>
+                        </td>
+                    `;
+                    
+                    usersList.appendChild(newRow);
+                    addUserModal.classList.add('hidden');
+                    addUserForm.reset();
+                }
+            });
+            
+            // Report generation (simulated)
+            generateReport.addEventListener('click', function() {
+                const startDate = document.getElementById('reportStartDate').value;
+                const endDate = document.getElementById('reportEndDate').value;
+                
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates');
+                    return;
+                }
+                
+                alert(`Report generated for period: ${startDate} to ${endDate}`);
+            });
+            
+            exportExcel.addEventListener('click', function() {
+                alert('Attendance report exported to Excel successfully!');
+            });
+            
+            exportPDF.addEventListener('click', function() {
+                alert('Attendance report exported to PDF successfully!');
+            });
+            
+            // Close modals when clicking outside
+            window.addEventListener('click', function(e) {
+                if (e.target === addUserModal) {
+                    addUserModal.classList.add('hidden');
+                }
+                // Don't close permission modal when clicking outside
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Escape key to close modals
+                if (e.key === 'Escape') {
+                    addUserModal.classList.add('hidden');
+                    
+                    // Don't auto-close permission modal with Escape
+                    if (isAdmin) {
+                        permissionModal.classList.add('hidden');
+                        writePermissionGranted = true;
+                    }
+                }
+                
+                // Ctrl+S to save canvas
+                if (e.ctrlKey && e.key === 's' && !addUserModal.classList.contains('hidden')) {
+                    e.preventDefault();
+                    saveCanvas.click();
+                }
+            });
+            
+            // Hide gesture popup after 10 seconds
+            setTimeout(() => {
+                if (gesturePopup.classList.contains('hidden') === false) {
+                    gesturePopup.classList.add('hidden');
+                }
+            }, 10000);
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
